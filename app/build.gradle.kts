@@ -66,4 +66,10 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    implementation(libs.ktor.client.core) // Core Ktor client
+    implementation(libs.ktor.client.cio) // For Android's HTTP engine
+    implementation(libs.ktor.client.content.negotiation) // For JSON handling
+    implementation(libs.ktor.serialization.kotlinx.json) // Kotlinx JSON support
+
 }
