@@ -45,3 +45,40 @@ fun GreetingPreview() {
         Greeting("Android")
     }
 }
+
+//suspend fun fetchUsers() {
+//    val url = "https://jsonplaceholder.typicode.com/users"
+//    val response = apiRequest(
+//        method = HttpMethod.Get,
+//        url = url,
+//        params = mapOf("limit" to "10", "page" to "1")
+//    )
+//    println(response.bodyAsText()) // Print the response body as a string
+//}
+//
+//@kotlinx.serialization.Serializable
+//data class LoginRequest(val email: String, val password: String)
+//
+//suspend fun loginUser() {
+//    val url = "https://example.com/api/login"
+//    val body = LoginRequest(email = "user@example.com", password = "password123")
+//    val response = apiRequest(
+//        method = HttpMethod.Post,
+//        url = url,
+//        body = body,
+//        headers = mapOf("Authorization" to "Bearer YOUR_TOKEN")
+//    )
+//    println(response.bodyAsText()) // Print the response body as a string
+//}
+//@kotlinx.serialization.Serializable
+//data class User(val id: Int, val name: String, val email: String)
+//
+//suspend fun fetchUserDetails() {
+//    val url = "https://jsonplaceholder.typicode.com/users/1"
+//    val response = apiRequest(
+//        method = HttpMethod.Get,
+//        url = url
+//    )
+//    val user: User = response.body()
+//    println("User: $user")
+//}
