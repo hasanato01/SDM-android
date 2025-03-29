@@ -66,6 +66,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.androidx.navigation.compose.v275)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.gson.v2101)
 
     implementation(libs.ktor.client.core) // Core Ktor client
     implementation(libs.ktor.client.cio) // For Android's HTTP engine
