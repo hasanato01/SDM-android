@@ -78,6 +78,17 @@ fun HomePage(navController: NavController, viewModel: ApplicationViewModel) {
               }
               .padding(vertical = 12.dp)
           )
+
+          Text(
+            text = stringResource(R.string.myRequests),
+            modifier = Modifier
+              .fillMaxWidth()
+              .clickable {
+                scope.launch { drawerState.close() }
+                navController.navigate("my_requests")
+              }
+              .padding(vertical = 12.dp)
+          )
         }
       }
     }

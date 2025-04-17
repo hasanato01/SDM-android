@@ -11,7 +11,9 @@ import gov.syria.sdm.api.Endpoints.AFFILIATES_EP
 import gov.syria.sdm.api.Endpoints.BASE_URL
 import gov.syria.sdm.api.Endpoints.LOGIN_EP
 import gov.syria.sdm.api.Endpoints.SIGNUP_EP
+import gov.syria.sdm.api.Endpoints.USER_APPLICATION_EP
 import gov.syria.sdm.data.Address
+import gov.syria.sdm.data.Application
 import gov.syria.sdm.data.Arrest
 import gov.syria.sdm.data.Contact
 import gov.syria.sdm.data.Course
@@ -23,6 +25,8 @@ import gov.syria.sdm.data.Social
 import gov.syria.sdm.data.TravelEntry
 import gov.syria.sdm.helper.Helpers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 class ApplicationViewModel : ViewModel() {
   //region Data
@@ -150,6 +154,8 @@ class ApplicationViewModel : ViewModel() {
 
   var chronicDisease = mutableStateOf("")
   var about = mutableStateOf("")
+
+  var requests = mutableStateOf<List<Application>>(emptyList())
   //endregion
 
   val helpers = Helpers()
@@ -176,6 +182,7 @@ class ApplicationViewModel : ViewModel() {
 
       if (token.isNotEmpty() && userId.isNotEmpty()) {
         saveToSharedPreferences(context, token, userId)
+        fetchUserData(context)
       }
       return true
     }
@@ -199,10 +206,186 @@ class ApplicationViewModel : ViewModel() {
     return response?.optBoolean("status", false) == true
   }
 
+  // Fetch user details API call
+  fun fetchUserData(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
+    val userId = getUserPrefs(context, "user_id")
+    viewModelScope.launch {
+      try {
+        val response = ApiHelper.makeRequest(
+          url = BASE_URL,
+          endpoint = "$AFFILIATES_EP$userId",
+          method = "GET",
+          token = token
+        )
+
+        if (response != null && response.optString("message", "") == "Success") {
+          val data = response.optJSONObject("data") ?: return@launch
+
+          // Update personalInfo
+          val userInfo = data.optJSONObject("userInfo") ?: JSONObject()
+          personalInfo.value = Personal(
+            firstName = mutableStateOf(userInfo.optString("name", "")),
+            surname = mutableStateOf(userInfo.optString("surename", "")),
+            fatherName = mutableStateOf(userInfo.optString("fatherName", "")),
+            motherName = mutableStateOf(userInfo.optString("motherFullName", "")),
+            height = mutableStateOf(userInfo.optString("height", "")),
+            weight = mutableStateOf(userInfo.optString("weight", "")),
+            faceColor = mutableStateOf(userInfo.optString("faceColor", "")),
+            eyeColor = mutableStateOf(userInfo.optString("eyeColor", "")),
+            distinctiveMarks = mutableStateOf(userInfo.optString("distinctiveMarks", "")),
+            nationalNumber = mutableStateOf(userInfo.optString("nationalNumber", "")),
+            idNumber = mutableStateOf(userInfo.optString("idNumber", "")),
+            cardIssueDate = mutableStateOf(userInfo.optString("cardIssueDate", "").split("T").firstOrNull() ?: ""),
+            placeOfBirth = mutableStateOf(userInfo.optString("placeOfBirth", "")),
+            dateOfBirth = mutableStateOf(userInfo.optString("dateOfBirth", ""))
+          )
+
+          // Update addressInfo
+          val addressInfoData = data.optJSONObject("addressInfo") ?: JSONObject()
+          addressInfo.value = Address(
+            city = mutableStateOf(addressInfoData.optString("city", "")),
+            governorate = mutableStateOf(addressInfoData.optString("governorate", "")),
+            trust = mutableStateOf(addressInfoData.optString("trust", "")),
+            restriction = mutableStateOf(addressInfoData.optString("restriction", "")),
+            detailedOriginPlace = mutableStateOf(addressInfoData.optString("detailedOriginPlace", "")),
+            nextTo = mutableStateOf(addressInfoData.optString("nextTo", "")),
+            sector = mutableStateOf(addressInfoData.optString("sector", "")),
+            mass = mutableStateOf(addressInfoData.optString("mass", "")),
+            buildingNumber = mutableStateOf(addressInfoData.optString("buildingNumber", "")),
+            floor = mutableStateOf(addressInfoData.optString("floor", "")),
+            apartment = mutableStateOf(addressInfoData.optString("apartment", "")),
+            idCardResidence = mutableStateOf(data.optString("idCardResidence", ""))
+          )
+
+          // Update socialInfo
+          val socialInfoData = data.optJSONObject("socialInfo") ?: JSONObject()
+          socialInfo.value = Social(
+            maritalStatus = mutableStateOf(socialInfoData.optString("maritalStatus", "")),
+            wivesCount = mutableStateOf(socialInfoData.optString("wivesCount", "")),
+            childrenCount = mutableStateOf(socialInfoData.optString("childrenCount", "")),
+            malesCount = mutableStateOf(socialInfoData.optString("malesCount", "")),
+            femalesCount = mutableStateOf(socialInfoData.optString("femalesCount", "")),
+            marriageCertificateExists = mutableStateOf(socialInfoData.optBoolean("marriageCertificate", false)),
+            marriageCertificateNo = mutableStateOf(socialInfoData.optString("familyBookOrMarriageCertificateNumber", ""))
+          )
+
+          // Update educational
+          val educationalData = data.optJSONObject("educationaInfo") ?: JSONObject()
+          val certificateNumberValue = educationalData.optString("certificateNumber", "")
+          educational.value = Educational(
+            educationalLevel = mutableStateOf(educationalData.optString("educationalLevel", "")),
+            documentPresence = mutableStateOf(educationalData.optBoolean("documentPresence", false)),
+            universityStudent = mutableStateOf(educationalData.optBoolean("universityStudent", false)),
+            college = mutableStateOf(educationalData.optString("college", "")),
+            academicYear = mutableStateOf(educationalData.optString("academicYear", "")),
+            certificateType = mutableStateOf(educationalData.optString("certificateType", "")),
+            collegeOrInstitute = mutableStateOf(educationalData.optString("collegeOrInstitute", "")),
+            specializationEdu = mutableStateOf(educationalData.optString("specializationEdu", "")),
+            yearCertificate = mutableStateOf(educationalData.optString("yearCertificate", "")),
+            graduationRate = mutableStateOf(educationalData.optString("graduationRate", "")),
+            certificateNumber = mutableStateOf(certificateNumberValue),
+            certificateExists = mutableStateOf(certificateNumberValue.isNotBlank())
+          )
+
+
+          // Update courses
+          val coursesArray = data.optJSONArray("coursesAndSkills") ?: JSONArray()
+          val fetchedCourses = mutableListOf<Course>()
+          for (i in 0 until coursesArray.length()) {
+            val course = coursesArray.getJSONObject(i)
+            fetchedCourses.add(
+              Course(
+                type = course.optString("courseType", ""),
+                level = course.optString("courseLevel", ""),
+                duration = course.optString("courseDuration", ""),
+                date = course.optString("date", ""),
+                organizing = course.optString("organizing", ""),
+                haveDocument = course.optBoolean("haveDocument", false),
+              )
+            )
+          }
+          courses.value = fetchedCourses
+
+          // Update travelList
+          val travelArray = data.optJSONArray("travelInformation") ?: JSONArray()
+          val fetchedTravel = mutableListOf<TravelEntry>()
+          for (i in 0 until travelArray.length()) {
+            val travel = travelArray.getJSONObject(i)
+            fetchedTravel.add(
+              TravelEntry(
+                travelPlace = mutableStateOf(travel.optString("travelPlace", "")),
+                travelReason = mutableStateOf(travel.optString("travelReason", "")),
+                travelYear = mutableStateOf(travel.optString("travelYear", "")),
+                travelDuration = mutableStateOf(travel.optString("duration", ""))
+              )
+            )
+          }
+          travelList.value = fetchedTravel
+
+          // Update govWork
+          val govWorkData = data.optJSONObject("workingWithTheGovernment") ?: JSONObject()
+          govWork.value = GovernmentWork(
+            workDuration = mutableStateOf(govWorkData.optString("workDuration", "")),
+            workType = mutableStateOf(govWorkData.optString("workType", "")),
+            leaveDate = mutableStateOf(govWorkData.optString("leaveDate", "")),
+            leaveReason = mutableStateOf(govWorkData.optString("leaveReason", ""))
+          )
+
+          // Update military
+          val militaryData = data.optJSONObject("militaryService") ?: JSONObject()
+          val serviceType = militaryData.optString("serviceType", "")
+          military.value = MilitaryService(
+            militaryService = mutableStateOf(serviceType.isNotBlank()),
+            serviceType = mutableStateOf(serviceType === "true"),
+            serviceDuration = mutableStateOf(militaryData.optString("serviceDuration", "")),
+            serviceLocation = mutableStateOf(militaryData.optString("serviceLocation", "")),
+            specialization = mutableStateOf(militaryData.optString("specialization", "")),
+            rank = mutableStateOf(militaryData.optString("rank", "")),
+            moveWithinTheService = mutableStateOf(militaryData.optString("moveWithinTheService", "")),
+            serviceEnd = mutableStateOf(militaryData.optString("serviceEnd", ""))
+          )
+
+          // Update arrest
+          val arrestData = data.optJSONObject("militaryService") ?: JSONObject()
+          arrest.value = Arrest(
+            arrested = mutableStateOf(arrestData.optBoolean("arrestStatus", false)),
+            arrestReason = mutableStateOf(arrestData.optString("arrestReason", "")),
+            arrestDuration = mutableStateOf(arrestData.optString("arrestDuration", "")),
+            arrestPlace = mutableStateOf(arrestData.optString("arrestPlace", ""))
+          )
+
+          // Update contactInfo
+          val contactInfoData = data.optJSONObject("contactInfo") ?: JSONObject()
+          contactInfo.value = Contact(
+            preferredContact = mutableStateOf(contactInfoData.optString("preferredContact", "")),
+            phone = mutableStateOf(contactInfoData.optString("phone", "")),
+            telegram = mutableStateOf(contactInfoData.optString("telegram", "")),
+            whatsApp = mutableStateOf(contactInfoData.optString("whatsApp", "")),
+            alternativePhone = mutableStateOf(contactInfoData.optString("alternativePhone", "")),
+            relationship = mutableStateOf(contactInfoData.optString("relationship", "")),
+            relationPhone = mutableStateOf(contactInfoData.optString("relationPhone", ""))
+          )
+
+          // Update other fields
+          chronicDisease.value = data.optString("chronicDisease", "")
+          about.value = data.optString("cv", "")
+
+          println("DEBUG: User data fetched and set successfully!")
+        } else {
+          println("DEBUG: Failed to fetch user data")
+        }
+      } catch (e: Exception) {
+        println("DEBUG: Exception occurred - ${e.message}")
+      }
+    }
+  }
+
   // Personal info update API call
   fun updatePersonalInfo(context: Context) {
     viewModelScope.launch {
       val userId = getUserPrefs(context, "user_id")
+      val token = getUserPrefs(context, "auth_token")
       if (userId.isNullOrEmpty()) {
         println("DEBUG: User ID is missing!")
       }
@@ -232,7 +415,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP$userId",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         println("Response: $response")
@@ -250,6 +434,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Address update API call
   fun updateAddressInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "addressInfo" to mapOf(
@@ -264,7 +449,8 @@ class ApplicationViewModel : ViewModel() {
           "buildingNumber" to addressInfo.value.buildingNumber.value,
           "floor" to addressInfo.value.floor.value,
           "apartment" to addressInfo.value.apartment.value,
-        )
+        ),
+        "idCardResidence" to addressInfo.value.idCardResidence.value
       )
 
       try {
@@ -272,7 +458,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -288,6 +475,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Social info update API call
   fun updateSocialInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "socialInfo" to mapOf(
@@ -306,7 +494,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -322,6 +511,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Government work info update API call
   fun updateGovWorkInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "workingWithTheGovernment" to mapOf(
@@ -337,7 +527,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -353,6 +544,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Educational info update API call
   fun updateEducationInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "educationaInfo" to mapOf(
@@ -376,7 +568,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -392,6 +585,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Travel info update API call
   fun updateTravelInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       if (travelList.value.isEmpty()) {
         println("DEBUG: No travel entries to update")
@@ -414,7 +608,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -430,6 +625,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Courses info update API call
   fun updateCoursesInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       if (courses.value.isEmpty()) {
         println("DEBUG: No courses to update")
@@ -454,7 +650,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -470,6 +667,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Military info update API call
   fun updateMilitaryInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "militaryService" to mapOf(
@@ -489,7 +687,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -505,6 +704,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Arrest info update API call
   fun updateArrestInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "militaryService" to mapOf(
@@ -520,7 +720,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -536,6 +737,7 @@ class ApplicationViewModel : ViewModel() {
 
   // Contact update API call
   fun updateContactInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "contactInformation" to mapOf(
@@ -554,7 +756,8 @@ class ApplicationViewModel : ViewModel() {
           url = BASE_URL,
           endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
           method = "PUT",
-          requestBody = requestBody
+          requestBody = requestBody,
+          token = token
         )
 
         if (response != null && response.optString("message", "") == "Success") {
@@ -569,7 +772,8 @@ class ApplicationViewModel : ViewModel() {
   }
 
   // Courses info update API call
-  fun updateOtherInfo(context: Context){
+  fun updateOtherInfo(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
     viewModelScope.launch {
       val requestBody = mapOf(
         "chronicDisease" to chronicDisease,
@@ -577,17 +781,22 @@ class ApplicationViewModel : ViewModel() {
         "idCardResidence" to addressInfo.value.idCardResidence.value
       )
 
-      val response = ApiHelper.makeRequest(
-        url = BASE_URL,
-        endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
-        method = "PUT",
-        requestBody = requestBody
-      )
+      try {
+        val response = ApiHelper.makeRequest(
+          url = BASE_URL,
+          endpoint = "$AFFILIATES_EP${getUserPrefs(context, "user_id")}",
+          method = "PUT",
+          requestBody = requestBody,
+          token = token
+        )
 
-      if (response != null && response.optBoolean("status", false)) {
-        println("DEBUG: Other info updated successfully!")
-      } else {
-        println("DEBUG: Failed to update other info")
+        if (response != null && response.optString("message", "") == "Success") {
+          println("DEBUG: Government work info updated successfully!")
+        } else {
+          println("DEBUG: Failed to update government work info")
+        }
+      } catch (e: Exception) {
+        println("DEBUG: Exception occurred - ${e.message}")
       }
     }
   }
@@ -612,5 +821,49 @@ class ApplicationViewModel : ViewModel() {
     val sharedPreferences: SharedPreferences =
       context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
     sharedPreferences.edit { clear() }
+  }
+
+  fun getMyRequests(context: Context) {
+    val token = getUserPrefs(context, "auth_token")
+    println("token $token")
+    viewModelScope.launch {
+      try {
+        println("asd ${getUserPrefs(context, "user_id")}")
+        val response = ApiHelper.makeRequest(
+          url = BASE_URL,
+          endpoint = "$USER_APPLICATION_EP${getUserPrefs(context, "user_id")}",
+          method = "GET",
+          token = token
+        )
+        println("res $response")
+        if (response != null && response.optString("message", "") == "Success") {
+          val dataArray = response.optJSONArray("data")
+          val fetchedRequests = mutableListOf<Application>()
+
+          for (i in 0 until (dataArray?.length() ?: 0)) {
+            val item = dataArray!!.getJSONObject(i)
+            fetchedRequests.add(
+              Application(
+                userId = item.optString("userId", ""),
+                city = item.optString("city", "-"),
+                status = item.optString("status", "-"),
+                department = item.optString("department", "-"),
+                desc = item.optString("desc", "-"),
+                createdAt = item.optString("createdAt", ""),
+                updatedAt = item.optString("updatedAt", "")
+              )
+            )
+          }
+
+          requests.value = fetchedRequests
+        } else if (response != null && response.optString("message", "") == "404") {
+          println("DEBUG: No applications")
+        } else {
+          println("DEBUG: Failed to fetch requests")
+        }
+      } catch (e: Exception) {
+        println("DEBUG: Exception occurred - ${e.message}")
+      }
+    }
   }
 }

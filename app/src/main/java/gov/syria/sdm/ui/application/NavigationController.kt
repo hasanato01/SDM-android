@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import gov.syria.sdm.data.viewModel.ApplicationViewModel
 import gov.syria.sdm.ui.HomePage
 import gov.syria.sdm.ui.auth.AuthForm
+import gov.syria.sdm.ui.components.MyRequests
 import gov.syria.sdm.ui.components.forms.AddressInfoForm
 import gov.syria.sdm.ui.components.forms.ArrestForm
 import gov.syria.sdm.ui.components.forms.ContactInfoForm
@@ -31,6 +32,7 @@ sealed class Screen(val route: String) {
   data object MilitaryService : Screen("military_service")
   data object ArrestInfo : Screen("arrest_info")
   data object ContactInfo : Screen("contact_info")
+  data object MyRequests : Screen("my_requests")
 }
 
 @Composable
@@ -48,5 +50,6 @@ fun NavigationController(navController: NavHostController, viewModel: Applicatio
     composable(Screen.MilitaryService.route) { MilitaryServiceForm(navController, viewModel) }
     composable(Screen.ArrestInfo.route) { ArrestForm(navController, viewModel) }
     composable(Screen.ContactInfo.route) { ContactInfoForm(navController, viewModel) }
+    composable(Screen.MyRequests.route) { MyRequests(navController, viewModel) }
   }
 }

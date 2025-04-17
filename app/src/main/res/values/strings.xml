@@ -124,4 +124,5 @@
     <string name="invalidCredentials">كلمة المرور والبريد الإلكتروني غير متطابقين</string>
     <string name="accountCreatedLogIn">تم إنشاء الحساب. يرجى تسجيل الدخول</string>
     <string name="menu">القائمة</string>
+    <string name="myRequests">طلباتي</string>
 </resources>

@@ -1,7 +1,7 @@
 package gov.syria.sdm.api
 
 object Endpoints {
-  const val BASE_URL = "http://192.168.1.107"
+  const val BASE_URL = "http://192.168.1.102"
 
   //Auth
   const val LOGIN_EP = "/api/v1/auth/login"
@@ -11,8 +11,8 @@ object Endpoints {
   const val AFFILIATES_EP = "/api/v1/affiliates/"
 
   //Application
-  const val applicationEP = "/api/v1/application/"
+  const val APPLICATION_EP = "/api/v1/application/"
   const val filterApplicationsEP = "/api/v1/application/filterapplications"
-  const val userApplicationEP = "/api/v1/application/userapplication/"
+  const val USER_APPLICATION_EP = "/api/v1/application/userapplication/"
   const val statusEP = "/api/v1/application/status/"
 }

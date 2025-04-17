@@ -35,8 +35,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AuthForm(navController: NavController, viewModel: ApplicationViewModel) {
-  val email = remember { mutableStateOf("") }
-  val password = remember { mutableStateOf("") }
+  val email = remember { mutableStateOf("byjyta@gmail.com") }
+  val password = remember { mutableStateOf("kokarn8f") }
   val firstName = remember { mutableStateOf("") }
   val lastName = remember { mutableStateOf("") }
   val isSignUpMode = remember { mutableStateOf(false) }
@@ -151,7 +151,7 @@ fun AuthForm(navController: NavController, viewModel: ApplicationViewModel) {
               if (trimmedEmail.isNotEmpty() && trimmedPassword.isNotEmpty()) {
                 val success = viewModel.signIn(context, trimmedEmail, trimmedPassword)
                 if (success) {
-                  navController.navigate(Screen.PersonalInfo.route)
+                  navController.navigate(Screen.Home.route)
                 } else {
                   errorMessage.intValue = R.string.invalidCredentials
                   isError.value = true

@@ -15,7 +15,8 @@ object ApiHelper {
     url: String,
     endpoint: String,
     method: String = "GET",
-    requestBody: Any? = null
+    requestBody: Any? = null,
+    token: String? = null
   ): JSONObject? {
     return withContext(Dispatchers.IO) {
       try {
@@ -24,10 +25,15 @@ object ApiHelper {
         connection.setRequestProperty("Content-Type", "application/json")
         connection.setRequestProperty("Accept", "application/json")
 
+        // Add Authorization header if token is provided
+        token?.let {
+          connection.setRequestProperty("Authorization", "Bearer $it")
+        }
+
         // Handle request body for POST & PUT
         if (method == "POST" || method == "PUT") {
           connection.doOutput = true
-          val jsonInputString = gson.toJson(requestBody) // Convert any object to JSON
+          val jsonInputString = gson.toJson(requestBody)
           OutputStreamWriter(connection.outputStream).use { writer ->
             writer.write(jsonInputString)
             writer.flush()
@@ -35,11 +41,12 @@ object ApiHelper {
         }
 
         val responseCode = connection.responseCode
-        if (responseCode in 200..299) { // Check if response is successful
+        println("Response code: $responseCode")
+        if (responseCode in 200..299) {
           val response = connection.inputStream.bufferedReader().use { it.readText() }
-          JSONObject(response) // Return response as JSON
+          JSONObject(response)
         } else {
-          null // Handle error response
+          null
         }
       } catch (e: Exception) {
         e.printStackTrace()
